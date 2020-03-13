@@ -2,7 +2,7 @@ import logging
 import os
 import platform
 import time
-from multiprocessing import Process
+from threading import Thread
 
 import telegram
 from telegram.ext import Updater
@@ -108,7 +108,7 @@ def service_updater_process():
 
 
 if __name__ == "__main__":
-    updater_process = Process(name='updater_process', target=service_updater_process)
+    updater_process = Thread(name='updater_process', target=service_updater_process)
     updater_process.start()
 
     while True:
