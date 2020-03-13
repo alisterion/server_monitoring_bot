@@ -97,7 +97,7 @@ def check_system() -> str:
     if cpu_usage > settings.CPU_MAX_LOADING_ALERT:
         alert_msg += f"<b>Warning! High CPU loading {cpu_usage}</b>\n"
 
-    if disk_usage < settings.DISK_MIN_USAGE_ALERT:
+    if disk_usage > settings.DISK_MAX_USAGE_ALERT:
         alert_msg += f"<b>Warning! Low disk space {disk_usage}%</b>\n"
 
     return alert_msg
