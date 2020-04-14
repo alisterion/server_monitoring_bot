@@ -1,8 +1,7 @@
+import asyncio
 import logging
 import os
 import platform
-import time
-from threading import Thread
 
 import telegram
 from telegram.ext import Updater
@@ -76,12 +75,12 @@ def get_info():
 
     return f"{cpu_usage}\n" \
            f"{disks_usage}\n" \
-           f"<b>Total memory</b>: {total_in_mb}\n" \
-           f"<b>Available memory</b>: {memory_in_mb}\n" \
+           f"<b>Total memory</b>: {total_in_mb:.0f}\n" \
+           f"<b>Available memory</b>: {memory_in_mb:.0f}\n" \
            f""
 
 
-def check_system() -> str:
+async def check_system() -> str:
     mem = psutil.virtual_memory()
     available_memory_in_mb = mem.available / 1024 / 1024
     cpu_usage = psutil.cpu_percent()
@@ -89,10 +88,10 @@ def check_system() -> str:
 
     alert_msg = ""
 
-    logging.log(logging.INFO, f'CPU: {cpu_usage} MEMEORY: {available_memory_in_mb:.2f} DISK_USAGE: {disk_usage}')
+    logging.log(logging.INFO, f'CPU: {cpu_usage} MEMEORY: {available_memory_in_mb:.0f} DISK_USAGE: {disk_usage}')
 
     if available_memory_in_mb < settings.FREE_MEMORY_ALERT:
-        alert_msg += f"<b>Warning! Low free memory {available_memory_in_mb:.2f}</b>\n"
+        alert_msg += f"<b>Warning! Low free memory {available_memory_in_mb:.0f}</b>\n"
 
     if cpu_usage > settings.CPU_MAX_LOADING_ALERT:
         alert_msg += f"<b>Warning! High CPU loading {cpu_usage}</b>\n"
@@ -103,17 +102,20 @@ def check_system() -> str:
     return alert_msg
 
 
-def service_updater_process():
+async def service_updater_process():
     service.run()
 
 
-if __name__ == "__main__":
-    updater_process = Thread(name='updater_process', target=service_updater_process)
-    updater_process.start()
-
+async def start_server():
+    await service_updater_process()
     while True:
-        time.sleep(settings.SERVER_POLLING_TTL)
+        done, _ = await asyncio.wait([check_system(), ])
+        result = done.pop().result()
+        if result:
+            service.send_message(settings.MAIN_CHAT_ID, result)
+        await asyncio.sleep(settings.SERVER_POLLING_TTL)
 
-        alert = check_system()
-        if alert:
-            service.send_message(settings.MAIN_CHAT_ID, alert)
+
+io_loop = asyncio.get_event_loop()
+io_loop.run_until_complete(start_server())
+io_loop.close()
